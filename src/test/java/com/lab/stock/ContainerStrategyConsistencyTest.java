@@ -2,11 +2,13 @@ package com.lab.stock;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.awaitility.Awaitility.await;
 
 import com.lab.stock.config.RedisStockOps;
 import com.lab.stock.domain.Order;
 import com.lab.stock.domain.OrderStatus;
 import com.lab.stock.support.ConcurrencyTestSupport;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -19,6 +21,7 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.MySQLContainer;
+import org.testcontainers.kafka.KafkaContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
@@ -39,6 +42,9 @@ class ContainerStrategyConsistencyTest extends ConcurrencyTestSupport {
     @Container
     static final GenericContainer<?> REDIS = new GenericContainer<>("redis:7").withExposedPorts(6379);
 
+    @Container
+    static final KafkaContainer KAFKA = new KafkaContainer("apache/kafka:3.9.0");
+
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", MYSQL::getJdbcUrl);
@@ -46,7 +52,7 @@ class ContainerStrategyConsistencyTest extends ConcurrencyTestSupport {
         registry.add("spring.datasource.password", MYSQL::getPassword);
         registry.add("app.redis.host", REDIS::getHost);
         registry.add("app.redis.port", () -> REDIS.getMappedPort(6379));
-        registry.add("app.kafka.enabled", () -> "false");
+        registry.add("spring.kafka.bootstrap-servers", KAFKA::getBootstrapServers);
     }
 
     @Autowired RedisStockOps redisOps;
@@ -112,5 +118,20 @@ class ContainerStrategyConsistencyTest extends ConcurrencyTestSupport {
 
         assertThat(redisOps.remainingStock(PRODUCT_ID)).as("INCR 로 재고 복구").isEqualTo(STOCK);
         assertThat(redisOps.buyerCount(PRODUCT_ID)).as("SREM 으로 구매자 제거").isZero();
+    }
+
+    @Test
+    void kafka_는_Consumer_처리가_끝난_뒤_정합성이_유지된다() throws Exception {
+        resetStock(STOCK);
+
+        Outcome outcome = runConcurrently("kafka", distinctUsers(USERS));
+        await().atMost(Duration.ofSeconds(120)).untilAsserted(
+                () -> assertThat(countOrders(OrderStatus.PENDING)).isZero());
+
+        assertThat(outcome.pending()).isEqualTo(USERS);
+        assertThat(currentStock()).isZero();
+        assertThat(countOrders(OrderStatus.SUCCESS)).isEqualTo(STOCK);
+        assertThat(countOrders(OrderStatus.SOLD_OUT)).isEqualTo(USERS - STOCK);
+        assertConsistent(STOCK);
     }
 }

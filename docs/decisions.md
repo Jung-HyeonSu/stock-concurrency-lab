@@ -29,3 +29,8 @@ CLAUDE.md 설계에서 애매하거나 바꿔야 했던 부분과 그 이유를 
 
 ## D-07. no-lock 의 인위적 지연
 - 로컬 H2/MySQL 에서 Lost Update 는 확률적이다. 테스트에서 재현 확률을 높이기 위해 `app.simulation.no-lock-think-time-ms` (기본 0) 로 읽기와 쓰기 사이에 지연을 줄 수 있게 했다. 테스트만 5ms 로 설정하고 벤치마크는 0 으로 둔다.
+
+## D-08. kafka 전략: publish 는 브로커 ack 를 기다린다
+- PENDING 저장을 커밋한 뒤 `send().get(5s)` 로 ack 를 기다리고 202 를 반환한다. 비동기로 던지면 API 지연은 줄지만 publish 실패 시 PENDING 주문이 영원히 남는다. 접수 신뢰성을 택했고, 이 지연은 API latency 에 포함된다.
+- 메시지는 JSON 문자열(Jackson)이며 key=productId. Consumer 는 DB 초기화 이전의 잔여 메시지(주문 없음)는 경고 후 건너뛴다.
+- 임베디드 Kafka(KRaft)로 H2 와 함께 Docker 없이 검증했다 (`H2KafkaStrategyTest`).
