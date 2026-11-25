@@ -1,0 +1,65 @@
+spring:
+  application:
+    name: stock-concurrency-lab
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:stock}?useSSL=false&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true
+    username: ${DB_USER:stock}
+    password: ${DB_PASSWORD:stock}
+    hikari:
+      # 벤치마크에서 바꿔 가며 측정하는 값 (환경변수로 오버라이드)
+      maximum-pool-size: ${HIKARI_POOL_SIZE:20}
+      connection-timeout: ${HIKARI_CONNECTION_TIMEOUT_MS:30000}
+  sql:
+    init:
+      mode: always
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: none
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
+    producer:
+      acks: 1
+    consumer:
+      auto-offset-reset: earliest
+
+server:
+  tomcat:
+    threads:
+      max: ${TOMCAT_MAX_THREADS:200}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus,metrics
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+        stock.order: true
+        stock.kafka.e2e: true
+
+app:
+  optimistic:
+    max-retries: ${OPTIMISTIC_MAX_RETRIES:30}
+    base-backoff-ms: 5
+    max-backoff-ms: 200
+  redisson:
+    wait-time-ms: ${REDISSON_WAIT_TIME_MS:3000}
+    lease-time-ms: ${REDISSON_LEASE_TIME_MS:5000}
+  redis:
+    enabled: true
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    connection-pool-size: 64
+    load-on-startup: true
+  kafka:
+    enabled: true
+    topic: orders
+    partitions: 6
+    concurrency: 3
+    group-id: stock-consumer
+  simulation:
+    no-lock-think-time-ms: 0
+    redisson-wrong-post-unlock-delay-ms: 0
