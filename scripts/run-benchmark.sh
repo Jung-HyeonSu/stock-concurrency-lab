@@ -20,18 +20,31 @@ TAG="${TAG:-}"   # 튜닝 변수 라벨. 결과 파일명/집계에 variant 로 
 
 mkdir -p "$RESULT_DIR"
 
+# kafka consumer lag 이 0 이 될 때까지 기다린다. 이전 회차의 잔여 메시지가 DB 초기화 후 새 회차에 섞이는 것을 막는다.
+wait_kafka_drained() {
+  command -v docker >/dev/null 2>&1 || return 0
+  for _ in $(seq 1 90); do
+    lag=$(docker exec lab-kafka /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server localhost:9092       --describe --group stock-consumer 2>/dev/null | awk 'NR>1 && $6 ~ /^[0-9]+$/ {s+=$6} END {print s+0}')
+    [ "${lag:-0}" = "0" ] && return 0
+    sleep 5
+  done
+  echo "경고: kafka consumer lag 이 450초 안에 0 이 되지 않았습니다 (lag=${lag:-?})"
+}
+
 for strategy in ${STRATEGIES//,/ }; do
   for scenario in ${SCENARIOS//,/ }; do
     if [ "$WARMUP" = "1" ]; then
       echo "== warmup: $strategy ($scenario) 1분"
-      k6 run --quiet -e BASE_URL="$BASE_URL" -e STRATEGY="$strategy" -e SCENARIO=warmup \
+      k6 run --quiet --log-output=none -e BASE_URL="$BASE_URL" -e STRATEGY="$strategy" -e SCENARIO=warmup \
         -e OUT="$RESULT_DIR/warmup-discard.json" k6/order.js || true
     fi
+    wait_kafka_drained
     for run in $(seq 1 "$RUNS"); do
       out="$RESULT_DIR/${strategy}-${scenario}${TAG:+-$TAG}-run${run}.json"
+      wait_kafka_drained
       echo "== run $run/$RUNS: $strategy / $scenario -> $out"
       # 회차 시작 시 k6 setup() 이 /admin/reset 으로 DB/Redis 를 초기화한다
-      k6 run --quiet -e BASE_URL="$BASE_URL" -e STRATEGY="$strategy" -e SCENARIO="$scenario" \
+      k6 run --quiet --log-output=none -e BASE_URL="$BASE_URL" -e STRATEGY="$strategy" -e SCENARIO="$scenario" \
         -e RATE="$RATE" -e TAG="$TAG" -e OUT="$out" k6/order.js
       # 부하 종료 후 DB/Redis 최종 정합성 자동 검증 (kafka 는 Consumer 처리 완료까지 대기)
       node scripts/verify-run.mjs "$out" "$BASE_URL"

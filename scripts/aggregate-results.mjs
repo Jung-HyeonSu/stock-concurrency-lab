@@ -26,7 +26,9 @@ for (const [key, runs] of [...groups].sort()) {
   const [strategy, scenario, variant, rate] = key.split('|');
   const label = scenario + (rate ? ` @${rate}rps` : '') + (variant ? ` [${variant}]` : '');
   const okRuns = runs.filter((r) => r.verify?.consistent).length;
-  const verified = runs.some((r) => r.verify) ? `${okRuns}/${runs.length} 회 일치` : '미검증';
+  const lagged = runs.filter((r) => r.verify && r.verify.pendingOrders > 0 && r.verify.mismatchedProducts === 0).length;
+  const broken = runs.filter((r) => r.verify && r.verify.mismatchedProducts > 0).length;
+  const verified = runs.some((r) => r.verify) ? `${okRuns}/${runs.length} 일치` + (lagged ? `, ${lagged} 처리지연(pending 잔존)` : '') + (broken ? `, ${broken} 불일치` : '') : '미검증';
   const m = (pick) => fmt(median(runs.map((r) => pick(r.summary.metrics))));
   console.log(
     `| ${strategy} | ${label} | ${runs.length} | ` +

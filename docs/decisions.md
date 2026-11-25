@@ -51,3 +51,10 @@ CLAUDE.md 설계에서 애매하거나 바꿔야 했던 부분과 그 이유를 
 - 시간 제약으로 시나리오 A(핫 상품)만 5개 정합 전략으로 실측했다 (워밍업 1분 + 3회, 중앙값). no-lock/redisson-wrong 은 정합성이 깨지는 전략이라 부하 비교 대상에서 제외했다.
 - 이 PC 에는 jq 가 없어 `scripts/aggregate-results.mjs`(node)를 추가했다. `aggregate-results.sh`(jq)도 유지한다.
 - k6 에러율은 타임아웃을 포함한다. 서버 5xx 와 구분해 해석해야 한다 (README 7장).
+
+## D-13. B~C 실측에서 발견한 문제와 보완
+- 부하 후 `/admin/verify` 로 회차마다 정합성을 검사한 결과 redisson 불일치 2건(락 leaseTime 만료 의심), kafka 불일치 1건(이전 회차 backlog 가 TRUNCATE 후 재사용된 주문 id 에 적용)이 나왔다.
+- 보완: (1) `OrderProcessor` 가 메시지의 productId/userId 가 주문과 같을 때만 처리한다(테스트 추가). (2) `RedissonLockFacade` 가 락 만료 횟수 Counter(`stock.redisson.lease.expired`)와 경고 로그를 남긴다. (3) `run-benchmark.sh` 가 회차 전 Kafka consumer lag 이 0 이 될 때까지 기다린다. (4) 집계가 "처리지연(pending 잔존)"과 "불일치"를 구분한다.
+- B~C 결과는 환경 오염으로 신뢰할 수 없다고 판단해 비교에 쓰지 않는다. 보완 후 재측정은 다음 작업으로 남겼다.
+- 벤치마크 실행 중 스크립트를 수정하면 bash 가 깨진다(stages 미실행의 원인). 실행 중에는 수정하지 않는다.
+- k6 경고 로그가 227MB 에 달해 `--log-output=none` 으로 끄고 `docs/results/*.log` 를 gitignore 처리했다.

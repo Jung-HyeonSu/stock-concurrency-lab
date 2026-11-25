@@ -5,3 +5,5 @@ out/
 *.iml
 k6/results/
 *.log
+
+docs/results/*.log

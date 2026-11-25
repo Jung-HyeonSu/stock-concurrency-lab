@@ -30,6 +30,11 @@ public class OrderProcessor {
             log.warn("주문을 찾을 수 없어 건너뜁니다 (DB 초기화 이전의 잔여 메시지). orderId={}", message.orderId());
             return false;
         }
+        // 주문 id 는 DB 초기화(TRUNCATE) 후 재사용될 수 있으므로, 메시지가 이 주문의 것인지 내용까지 확인한다
+        if (!order.getProductId().equals(message.productId()) || !order.getUserId().equals(message.userId())) {
+            log.warn("메시지와 주문 내용이 달라 건너뜁니다 (이전 회차의 잔여 메시지). orderId={}", message.orderId());
+            return false;
+        }
         if (order.getStatus() != OrderStatus.PENDING) {
             return false; // 멱등성: 이미 처리된 주문(재전달/중복 메시지)
         }

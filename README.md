@@ -4,7 +4,7 @@
 
 > 한 줄 요약: 재고 N개에 요청 M건이 몰릴 때, 락 없음 / 비관적 락 / 낙관적 락 / 분산 락 / Redis 원자 연산 / Kafka 순차 처리가 정합성·처리량·지연에서 어떻게 다른지 코드와 테스트로 보여준다.
 
-> **현재 상태**: 구현 완료. Docker(MySQL 8/Redis 7/Kafka) 위의 Testcontainers 통합 테스트 28개 전부 통과, compose 스택 기동·API·Prometheus·Grafana 동작 확인, 시나리오 A(단일 핫 상품)를 5개 전략으로 실측했다. 시나리오 B~D, no-lock/redisson-wrong 부하 측정은 아직 하지 않았다. 자세한 내용은 [남은 작업](#남은-작업)과 [docs/decisions.md](docs/decisions.md).
+> **현재 상태**: 구현 완료. Docker(MySQL 8/Redis 7/Kafka) 위의 Testcontainers 통합 테스트 28개 전부 통과, compose 스택 기동·API·Prometheus·Grafana 동작 확인, 시나리오 A(단일 핫 상품)를 5개 전략으로 실측했다. 시나리오 B~C는 실행했으나 환경 오염으로 신뢰할 수 없고, D(stages)는 미실행이다. 자세한 내용은 [남은 작업](#남은-작업)과 [docs/decisions.md](docs/decisions.md).
 
 ## 1. 요구사항
 
@@ -136,6 +136,43 @@ scripts/aggregate-results.sh > docs/results/summary.md               # 중앙값
 - 정합성은 부하 테스트가 아니라 Testcontainers 정합성 테스트(28개 통과)로 검증했다. 부하 실행 후 DB 최종 상태 검증은 하지 않았다.
 - 시나리오 B~D(상품 100개 분산, 재고:요청 1:10/1:100, 부하 단계)와 no-lock/redisson-wrong 부하 측정은 **측정 예정**이다.
 
+### 시나리오 B, C (분산, 재고:요청 비율) 실행 결과 — **신뢰할 수 없음, 전략 비교에 쓰지 말 것**
+
+아래는 6개 시나리오·전략 조합의 전체 집계(`docs/results/summary.md`)다. 시나리오 A(hot)는 위 표와 같은 값이다.
+
+| 전략 | 시나리오 | 회차 | TPS(req/s) | p50(ms) | p95(ms) | p99(ms) | 에러율(%) | 정합성 |
+|---|---|---|---|---|---|---|---|---|
+| kafka | hot | 3 | 645.44 | 754.06 | 4038.94 | 5687.32 | 29.87 | 미검증 |
+| kafka | ratio100 @1000rps | 3 | 395.86 | 3.73 | 10674.64 | 30012.22 | 64.72 | 2/3 일치, 1 처리지연(pending 잔존) |
+| kafka | ratio10 @1000rps | 3 | 557.02 | 4.79 | 11839.85 | 30014.12 | 62.40 | 1/3 일치, 2 처리지연(pending 잔존) |
+| kafka | spread @1000rps | 3 | 482.34 | 21.43 | 14993.64 | 30012.47 | 60.73 | 2/3 일치, 1 불일치 |
+| optimistic | hot | 3 | 831.87 | 1.06 | 2.05 | 3.67 | 0.00 | 미검증 |
+| optimistic | ratio100 @1000rps | 3 | 405.38 | 3.04 | 34275.45 | 37668.63 | 87.90 | 3/3 일치 |
+| optimistic | ratio10 @1000rps | 3 | 449.14 | 2.04 | 30016.55 | 46766.01 | 93.07 | 3/3 일치 |
+| optimistic | spread @1000rps | 3 | 727.49 | 4.83 | 6199.53 | 8487.41 | 33.43 | 3/3 일치 |
+| pessimistic | hot | 3 | 831.54 | 1.13 | 2.14 | 9.44 | 0.00 | 미검증 |
+| pessimistic | ratio100 @1000rps | 3 | 418.48 | 4.84 | 16959.25 | 30013.03 | 56.38 | 3/3 일치 |
+| pessimistic | ratio10 @1000rps | 3 | 457.21 | 1.05 | 30005.50 | 34381.19 | 91.10 | 3/3 일치 |
+| pessimistic | spread @1000rps | 3 | 423.71 | 3.37 | 10744.85 | 30013.16 | 65.58 | 3/3 일치 |
+| redis-atomic | hot | 3 | 831.88 | 0.53 | 1.16 | 2.62 | 0.00 | 미검증 |
+| redis-atomic | ratio100 @1000rps | 3 | 822.76 | 1.04 | 3.32 | 329.10 | 0.00 | 3/3 일치 |
+| redis-atomic | ratio10 @1000rps | 3 | 409.36 | 2.16 | 30048.36 | 59997.74 | 93.96 | 3/3 일치 |
+| redis-atomic | spread @1000rps | 3 | 465.16 | 11.68 | 17453.03 | 30003.02 | 68.26 | 3/3 일치 |
+| redisson | hot | 3 | 638.15 | 2.73 | 7399.01 | 9242.91 | 52.84 | 미검증 |
+| redisson | ratio100 @1000rps | 3 | 352.58 | 4.55 | 20383.03 | 27643.90 | 82.90 | 2/3 일치, 1 불일치 |
+| redisson | ratio10 @1000rps | 3 | 456.96 | 2.02 | 26111.90 | 27180.89 | 92.94 | 3/3 일치 |
+| redisson | spread @1000rps | 3 | 380.66 | 7.16 | 16481.43 | 30013.78 | 70.94 | 2/3 일치, 1 불일치 |
+
+왜 신뢰할 수 없는가
+- B~C 는 워밍업 없이 약 1시간 연속 실행했다. **같은 전략이 시나리오마다 0% ↔ 90% 이상으로 널뛴다** (예: redis-atomic 은 ratio100 에서 에러 0%, ratio10 에서 94%). 전략 특성으로는 설명되지 않아 **환경 요인**(호스트 자원 경쟁, 앞선 kafka 회차의 consumer backlog 가 다음 회차 동안 DB/CPU 를 점유 — 당시 스크립트에는 lag 대기가 없었다)이 섞였다고 판단한다.
+- 에러율은 타임아웃을 포함한다 (k6 30초). TPS·지연 수치는 비교 근거로 쓰지 않는다.
+- **stages(D) 시나리오는 실행되지 않았다.** 벤치마크 도중 `run-benchmark.sh` 를 수정해 bash 가 `unexpected EOF` 로 종료됐다 (실행 오류, 측정 결과 아님).
+
+그래도 유효한 관찰 — 정합성 자동 검증(`/admin/verify`, 회차마다 실행)
+- pessimistic, optimistic, redis-atomic: 모든 회차에서 재고·성공 주문 수 일치.
+- **redisson: 2건 불일치** (spread 1회, ratio100 1회 — ratio100 은 재고 375 에 성공 376건, 초과 판매 1건). 부하로 트랜잭션이 느려져 락 leaseTime(5s)이 만료되면 동시 진입이 가능해지는 것으로 의심한다. 확증은 아직 없다: 만료 횟수 Counter(`stock.redisson.lease.expired`)를 이번에 추가했으니 재측정 때 확인할 것.
+- kafka: spread 1건 불일치 — 이전 회차 backlog 메시지가 DB 초기화 후 같은 id 의 새 주문에 적용된 것으로 본다. Consumer 가 메시지와 주문의 productId/userId 일치를 확인하도록 수정했다. ratio10/ratio100 의 kafka 는 성공 주문 수가 재고와 일치하나 180초 안에 PENDING 이 다 처리되지 않아 "처리지연"으로 표시됐다 (데이터 손상 아님).
+
 ## 8. 결론: 상황별 전략 선택 (설계 기준 가이드)
 
 > 구조적 특성에 시나리오 A 실측(7장)을 반영한 가이드다. 다른 시나리오는 아직 측정 전이다.
@@ -159,8 +196,8 @@ scripts/aggregate-results.sh > docs/results/summary.md               # 중앙값
 
 **검증한 것**: `./gradlew build` (H2/임베디드 Kafka 테스트 + Docker 기반 Testcontainers 28개 전부 통과, 건너뜀 0), `docker compose up` 전체 스택, 7개 전략 API 호출, Prometheus 타깃 up, Grafana 대시보드, k6 시나리오 A 실측.
 
-**남은 것**
-- 시나리오 B, C, D 실측 (`scripts/run-benchmark.sh <전략> spread|ratio10|ratio100|stages 3`).
-- 부하 실행 후 DB/Redis 최종 정합성 자동 검증 (현재는 통합 테스트로만 검증).
-- 호스트 자원 경쟁을 줄이기 위한 k6 분리 실행, 더 높은 RATE 로 한계 처리량 측정.
-- redisson 의 `wait-time-ms`, Hikari 풀 크기, kafka consumer 동시성 튜닝에 따른 변화 측정.
+**남은 것 (다음 작업)**
+- 시나리오 B, C 재측정: 스크립트에 kafka lag 대기와 `--log-output=none` 이 추가되었으니 **회차 사이에 충분히 쉬고, 전략·시나리오별로 스택을 재기동**해 다시 측정. 결과가 안정적인지 확인 후 비교.
+- 시나리오 D(stages) 첫 실행. (실행 중 스크립트를 수정하지 말 것)
+- redisson 불일치 재현: `stock.redisson.lease.expired` 가 0 이 아닌지 확인하고, leaseTime/Hikari 풀을 키워 사라지는지 검증.
+- 한계 처리량(RATE 상향), Hikari 풀·redisson waitTime·kafka consumer 동시성(`KAFKA_CONCURRENCY`)에 따른 변화 측정.

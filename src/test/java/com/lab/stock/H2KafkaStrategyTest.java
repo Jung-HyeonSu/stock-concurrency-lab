@@ -82,6 +82,19 @@ class H2KafkaStrategyTest extends ConcurrencyTestSupport {
     }
 
     @Test
+    void 주문과_내용이_다른_메시지는_건너뛴다() throws Exception {
+        resetStock(STOCK);
+        Long orderId = orderRepository.saveAndFlush(com.lab.stock.domain.Order.pending(PRODUCT_ID, 5L)).getId();
+
+        // 같은 orderId 지만 userId 가 다른 잔여 메시지 (DB 초기화 후 id 재사용 상황)
+        boolean processed = processor.process(new OrderMessage(orderId, PRODUCT_ID, 999L, System.currentTimeMillis()));
+
+        assertThat(processed).isFalse();
+        assertThat(countOrders(OrderStatus.PENDING)).isEqualTo(1);
+        assertThat(currentStock()).isEqualTo(STOCK);
+    }
+
+    @Test
     void API_는_202_와_orderId_를_반환하고_조회_API_로_최종_상태를_확인할_수_있다() throws Exception {
         resetStock(STOCK);
 

@@ -1,0 +1,262 @@
+{
+  "strategy": "kafka",
+  "scenario": "ratio10",
+  "variant": "",
+  "rate": 1000,
+  "stock": 3750,
+  "products": 1,
+  "summary": {
+    "root_group": {
+      "groups": [],
+      "checks": [
+        {
+          "path": "::not 5xx",
+          "id": "190338f12de9620ea4fd03a4d3055937",
+          "passes": 30748,
+          "fails": 0,
+          "name": "not 5xx"
+        }
+      ],
+      "name": "",
+      "path": "",
+      "id": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "options": {
+      "summaryTrendStats": [
+        "avg",
+        "min",
+        "med",
+        "p(90)",
+        "p(95)",
+        "p(99)",
+        "max"
+      ],
+      "summaryTimeUnit": "",
+      "noColor": false
+    },
+    "state": {
+      "isStdOutTTY": false,
+      "isStdErrTTY": false,
+      "testRunDurationMs": 51953.4417
+    },
+    "metrics": {
+      "http_req_duration{expected_response:true}": {
+        "values": {
+          "avg": 3512.3262829629766,
+          "min": 18.0211,
+          "med": 4239.1933,
+          "p(90)": 8031.66378,
+          "p(95)": 10172.53448,
+          "p(99)": 11360.55722,
+          "max": 14155.78
+        },
+        "type": "trend",
+        "contains": "time"
+      },
+      "http_req_tls_handshaking": {
+        "type": "trend",
+        "contains": "time",
+        "values": {
+          "med": 0,
+          "p(90)": 0,
+          "p(95)": 0,
+          "p(99)": 0,
+          "max": 0,
+          "avg": 0,
+          "min": 0
+        }
+      },
+      "orders_accepted": {
+        "type": "counter",
+        "contains": "default",
+        "values": {
+          "count": 15524,
+          "rate": 298.8059980634546
+        }
+      },
+      "http_req_blocked": {
+        "type": "trend",
+        "contains": "time",
+        "values": {
+          "p(95)": 4.171,
+          "p(99)": 9.53836,
+          "max": 172.1352,
+          "avg": 1.0615963478487145,
+          "min": 0,
+          "med": 0.5065,
+          "p(90)": 2.72196
+        }
+      },
+      "http_req_connecting": {
+        "type": "trend",
+        "contains": "time",
+        "values": {
+          "p(99)": 9.074136000000005,
+          "max": 172.1352,
+          "avg": 0.9905746365735473,
+          "min": 0,
+          "med": 0.5054,
+          "p(90)": 2.5287,
+          "p(95)": 4.004239999999999
+        }
+      },
+      "vus_max": {
+        "type": "gauge",
+        "contains": "default",
+        "values": {
+          "value": 2000,
+          "min": 200,
+          "max": 2000
+        }
+      },
+      "http_req_failed": {
+        "type": "rate",
+        "contains": "default",
+        "values": {
+          "fails": 15525,
+          "rate": 0.49510553188721584,
+          "passes": 15224
+        }
+      },
+      "data_sent": {
+        "type": "counter",
+        "contains": "data",
+        "values": {
+          "count": 5408413,
+          "rate": 104101.14947206664
+        }
+      },
+      "vus": {
+        "type": "gauge",
+        "contains": "default",
+        "values": {
+          "value": 265,
+          "min": 0,
+          "max": 2000
+        }
+      },
+      "http_reqs": {
+        "type": "counter",
+        "contains": "default",
+        "values": {
+          "count": 30749,
+          "rate": 591.856843239704
+        }
+      },
+      "http_req_duration": {
+        "type": "trend",
+        "contains": "time",
+        "values": {
+          "p(95)": 9141.744059999995,
+          "p(99)": 30004.350308,
+          "max": 30076.9436,
+          "avg": 2093.6545266512817,
+          "min": 0,
+          "med": 42.475,
+          "p(90)": 5192.09832
+        }
+      },
+      "http_req_sending": {
+        "values": {
+          "p(99)": 1.0087,
+          "max": 73.4743,
+          "avg": 0.053689954144850296,
+          "min": 0,
+          "med": 0,
+          "p(90)": 0,
+          "p(95)": 0.5056
+        },
+        "type": "trend",
+        "contains": "time"
+      },
+      "http_req_waiting": {
+        "type": "trend",
+        "contains": "time",
+        "values": {
+          "p(95)": 9141.541659999995,
+          "p(99)": 30004.350308,
+          "max": 30075.945,
+          "avg": 2093.496993033927,
+          "min": 0,
+          "med": 42.2898,
+          "p(90)": 5191.424400000001
+        }
+      },
+      "checks": {
+        "type": "rate",
+        "contains": "default",
+        "values": {
+          "rate": 1,
+          "passes": 30748,
+          "fails": 0
+        }
+      },
+      "iterations": {
+        "type": "counter",
+        "contains": "default",
+        "values": {
+          "count": 30748,
+          "rate": 591.8375952367368
+        }
+      },
+      "dropped_iterations": {
+        "type": "counter",
+        "contains": "default",
+        "values": {
+          "count": 6822,
+          "rate": 131.30987624252043
+        }
+      },
+      "iteration_duration": {
+        "type": "trend",
+        "contains": "time",
+        "values": {
+          "p(99)": 30006.347397,
+          "max": 30104.2497,
+          "avg": 2095.1473469201364,
+          "min": 0,
+          "med": 43.721149999999994,
+          "p(90)": 5192.13528,
+          "p(95)": 9142.083844999996
+        }
+      },
+      "http_req_receiving": {
+        "type": "trend",
+        "contains": "time",
+        "values": {
+          "p(90)": 0,
+          "p(95)": 0.5775,
+          "p(99)": 1.5091560000000002,
+          "max": 96.4203,
+          "avg": 0.10384366320855977,
+          "min": 0,
+          "med": 0
+        }
+      },
+      "data_received": {
+        "type": "counter",
+        "contains": "data",
+        "values": {
+          "count": 2783366,
+          "rate": 53574.237026918665
+        }
+      }
+    },
+    "setup_data": {
+      "products": 1,
+      "stock": 3750
+    }
+  },
+  "verify": {
+    "products": 1,
+    "initialStock": 3750,
+    "successOrders": 3750,
+    "soldOutOrders": 7450,
+    "pendingOrders": 4324,
+    "negativeStockProducts": 0,
+    "mismatchedProducts": 0,
+    "redisChecked": true,
+    "redisMismatchedProducts": 1,
+    "consistent": false
+  }
+}
