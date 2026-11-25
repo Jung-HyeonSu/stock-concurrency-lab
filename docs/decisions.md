@@ -16,3 +16,16 @@ CLAUDE.md 설계에서 애매하거나 바꿔야 했던 부분과 그 이유를 
 ## D-04. 한글 사용자 경로에서의 빌드 (Windows)
 - 이 개발 PC는 사용자 홈과 프로젝트 경로에 한글이 포함돼 있어 Gradle 테스트 워커가 `ClassNotFoundException` 으로 죽는다 (Gradle 워커가 JVM 기본 인코딩으로 클래스패스를 전달하는 문제).
 - 해결: ASCII 경로를 쓴다. `GRADLE_USER_HOME` 을 `C:/gradle-home` 으로, 빌드 출력은 `build.gradle.kts` 가 읽는 `LAB_BUILD_DIR=C:/gradle-build/stock-lab` 으로 지정한다. 경로가 ASCII 인 환경(Linux/macOS/CI)에서는 아무 설정도 필요 없다.
+
+## D-05. Docker 가 없는 환경의 테스트 전략
+- 개발 PC에 Docker 가 없어 Testcontainers 테스트를 실행·검증할 수 없었다. 그래서 테스트를 두 층으로 나눴다.
+  1. `H2StrategyConsistencyTest` 등: H2(MySQL 모드) + 임베디드 Kafka. Docker 없이 항상 실행되며 `./gradlew build` 에 포함된다. Redis 가 필요한 전략은 제외된다.
+  2. `ContainerStrategyConsistencyTest`: Testcontainers(MySQL/Redis/Kafka)로 CLAUDE.md 명세 그대로 모든 전략을 검증한다. `@Testcontainers(disabledWithoutDocker = true)` 이므로 Docker 가 없으면 **건너뛴다(SKIPPED)**. 테스트를 약화하거나 `@Disabled` 로 끈 것이 아니라 Docker 유무에 따른 자동 선택이다. Docker 가 있는 환경에서는 같은 `./gradlew build` 가 이 테스트까지 실행한다.
+- 2번 층은 이 환경에서 **실행해 보지 못했다**. README/최종 보고에 그대로 명시한다.
+
+## D-06. HTTP 상태 코드 규약
+- 성공/품절: 200 (품절은 `status=SOLD_OUT`, orderId=null). kafka 접수: 202. 중복 구매(UNIQUE 위반): 409. 락 대기 초과/재시도 초과/Redis 미초기화: 503. 알 수 없는 전략: 400.
+- 벤치마크의 "에러율"은 5xx 와 네트워크 오류만 센다. 품절·중복은 정상 비즈니스 응답이다.
+
+## D-07. no-lock 의 인위적 지연
+- 로컬 H2/MySQL 에서 Lost Update 는 확률적이다. 테스트에서 재현 확률을 높이기 위해 `app.simulation.no-lock-think-time-ms` (기본 0) 로 읽기와 쓰기 사이에 지연을 줄 수 있게 했다. 테스트만 5ms 로 설정하고 벤치마크는 0 으로 둔다.
