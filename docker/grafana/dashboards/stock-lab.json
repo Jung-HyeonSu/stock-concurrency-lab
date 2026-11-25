@@ -1,0 +1,80 @@
+{
+  "uid": "stock-lab",
+  "title": "Stock Concurrency Lab",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "5s",
+  "time": { "from": "now-15m", "to": "now" },
+  "panels": [
+    {
+      "id": 1, "type": "timeseries", "title": "TPS (전략별, 응답 기준)",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [ { "refId": "A", "expr": "sum by (strategy) (rate(stock_order_seconds_count[15s]))", "legendFormat": "{{strategy}}" } ]
+    },
+    {
+      "id": 2, "type": "timeseries", "title": "Latency p50 / p95 / p99 (ms)",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ms" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "1000 * histogram_quantile(0.50, sum by (le, strategy) (rate(stock_order_seconds_bucket[30s])))", "legendFormat": "p50 {{strategy}}" },
+        { "refId": "B", "expr": "1000 * histogram_quantile(0.95, sum by (le, strategy) (rate(stock_order_seconds_bucket[30s])))", "legendFormat": "p95 {{strategy}}" },
+        { "refId": "C", "expr": "1000 * histogram_quantile(0.99, sum by (le, strategy) (rate(stock_order_seconds_bucket[30s])))", "legendFormat": "p99 {{strategy}}" }
+      ]
+    },
+    {
+      "id": 3, "type": "timeseries", "title": "에러율 (5xx / s)",
+      "gridPos": { "x": 0, "y": 8, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [ { "refId": "A", "expr": "sum(rate(http_server_requests_seconds_count{uri=\"/api/orders\", status=~\"5..\"}[15s]))", "legendFormat": "5xx" } ]
+    },
+    {
+      "id": 4, "type": "timeseries", "title": "HikariCP active / pending / max",
+      "gridPos": { "x": 8, "y": 8, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "hikaricp_connections_active", "legendFormat": "active" },
+        { "refId": "B", "expr": "hikaricp_connections_pending", "legendFormat": "pending" },
+        { "refId": "C", "expr": "hikaricp_connections_max", "legendFormat": "max" }
+      ]
+    },
+    {
+      "id": 5, "type": "timeseries", "title": "낙관적 락 재시도 (회/s)",
+      "gridPos": { "x": 16, "y": 8, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [ { "refId": "A", "expr": "rate(stock_optimistic_retry_total[15s])", "legendFormat": "retries" } ]
+    },
+    {
+      "id": 6, "type": "timeseries", "title": "Redis ops (회/s)",
+      "gridPos": { "x": 0, "y": 16, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [ { "refId": "A", "expr": "sum by (op) (rate(stock_redis_ops_total[15s]))", "legendFormat": "{{op}}" } ]
+    },
+    {
+      "id": 7, "type": "timeseries", "title": "Kafka consumer lag",
+      "gridPos": { "x": 8, "y": 16, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [ { "refId": "A", "expr": "max(kafka_consumer_fetch_manager_records_lag_max)", "legendFormat": "max lag" } ]
+    },
+    {
+      "id": 8, "type": "timeseries", "title": "kafka end-to-end p95 / p99 (ms)",
+      "gridPos": { "x": 16, "y": 16, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ms" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "1000 * histogram_quantile(0.95, sum by (le) (rate(stock_kafka_e2e_seconds_bucket[30s])))", "legendFormat": "p95" },
+        { "refId": "B", "expr": "1000 * histogram_quantile(0.99, sum by (le) (rate(stock_kafka_e2e_seconds_bucket[30s])))", "legendFormat": "p99" }
+      ]
+    },
+    {
+      "id": 9, "type": "timeseries", "title": "앱 CPU / 힙 사용",
+      "gridPos": { "x": 0, "y": 24, "w": 24, "h": 7 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "process_cpu_usage", "legendFormat": "process cpu" },
+        { "refId": "B", "expr": "sum(jvm_memory_used_bytes{area=\"heap\"}) / 1024 / 1024", "legendFormat": "heap MiB" }
+      ]
+    }
+  ]
+}
