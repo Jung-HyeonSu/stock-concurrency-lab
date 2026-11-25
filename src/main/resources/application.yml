@@ -58,7 +58,7 @@ app:
     enabled: true
     topic: orders
     partitions: 6
-    concurrency: 3
+    concurrency: ${KAFKA_CONCURRENCY:3}
     group-id: stock-consumer
   simulation:
     no-lock-think-time-ms: 0

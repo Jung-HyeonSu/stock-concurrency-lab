@@ -18,6 +18,7 @@ const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
 const STRATEGY = __ENV.STRATEGY || 'pessimistic';
 const SCENARIO = __ENV.SCENARIO || 'hot';
 const RATE = parseInt(__ENV.RATE || '1000');
+const TAG = __ENV.TAG || ''; // 튜닝 변수 라벨 (예: hikari50). 결과 JSON 의 variant 로 기록된다
 const OUT = __ENV.OUT || `k6/results/${STRATEGY}-${SCENARIO}.json`;
 
 // 5xx / 네트워크 오류만 실패로 센다. 200(성공/품절), 202(kafka 접수), 409(중복)는 정상 응답.
@@ -122,7 +123,7 @@ export default function () {
 export function handleSummary(data) {
   return {
     [OUT]: JSON.stringify(
-      { strategy: STRATEGY, scenario: SCENARIO, stock: STOCK, products: P.products, summary: data },
+      { strategy: STRATEGY, scenario: SCENARIO, variant: TAG, rate: RATE, stock: STOCK, products: P.products, summary: data },
       null,
       2,
     ),

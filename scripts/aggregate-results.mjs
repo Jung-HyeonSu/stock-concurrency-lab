@@ -8,7 +8,7 @@ const files = readdirSync(dir).filter((f) => /-run\d+\.json$/.test(f));
 const groups = new Map();
 for (const f of files) {
   const j = JSON.parse(readFileSync(join(dir, f), 'utf8'));
-  const key = `${j.strategy}|${j.scenario}`;
+  const key = `${j.strategy}|${j.scenario}|${j.variant ?? ''}|${j.rate ?? ''}`;
   if (!groups.has(key)) groups.set(key, []);
   groups.get(key).push(j);
 }
@@ -20,15 +20,18 @@ const median = (xs) => {
 };
 const fmt = (x) => x.toFixed(2);
 
-console.log('| 전략 | 시나리오 | 회차 | TPS(req/s) | p50(ms) | p95(ms) | p99(ms) | 에러율(%) |');
-console.log('|---|---|---|---|---|---|---|---|');
+console.log('| 전략 | 시나리오 | 회차 | TPS(req/s) | p50(ms) | p95(ms) | p99(ms) | 에러율(%) | 정합성 |');
+console.log('|---|---|---|---|---|---|---|---|---|');
 for (const [key, runs] of [...groups].sort()) {
-  const [strategy, scenario] = key.split('|');
+  const [strategy, scenario, variant, rate] = key.split('|');
+  const label = scenario + (rate ? ` @${rate}rps` : '') + (variant ? ` [${variant}]` : '');
+  const okRuns = runs.filter((r) => r.verify?.consistent).length;
+  const verified = runs.some((r) => r.verify) ? `${okRuns}/${runs.length} 회 일치` : '미검증';
   const m = (pick) => fmt(median(runs.map((r) => pick(r.summary.metrics))));
   console.log(
-    `| ${strategy} | ${scenario} | ${runs.length} | ` +
+    `| ${strategy} | ${label} | ${runs.length} | ` +
       `${m((x) => x.http_reqs.values.rate)} | ${m((x) => x.http_req_duration.values.med)} | ` +
       `${m((x) => x.http_req_duration.values['p(95)'])} | ${m((x) => x.http_req_duration.values['p(99)'])} | ` +
-      `${m((x) => x.http_req_failed.values.rate * 100)} |`,
+      `${m((x) => x.http_req_failed.values.rate * 100)} | ${verified} |`,
   );
 }
