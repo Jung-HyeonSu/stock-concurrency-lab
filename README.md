@@ -4,7 +4,7 @@
 
 > 한 줄 요약: 재고 N개에 요청 M건이 몰릴 때, 락 없음 / 비관적 락 / 낙관적 락 / 분산 락 / Redis 원자 연산 / Kafka 순차 처리가 정합성·처리량·지연에서 어떻게 다른지 코드와 테스트로 보여준다.
 
-> **현재 상태**: 구현과 H2/임베디드 Kafka 기반 테스트는 통과했다. **Docker, k6가 없는 환경에서 작업했기 때문에 Testcontainers 테스트(MySQL/Redis)와 벤치마크는 실행하지 못했다.** 7장 결과는 "측정 예정"이다. 자세한 내용은 [남은 작업](#남은-작업)과 [docs/decisions.md](docs/decisions.md).
+> **현재 상태**: 구현 완료. Docker(MySQL 8/Redis 7/Kafka) 위의 Testcontainers 통합 테스트 28개 전부 통과, compose 스택 기동·API·Prometheus·Grafana 동작 확인, 시나리오 A(단일 핫 상품)를 5개 전략으로 실측했다. 시나리오 B~D, no-lock/redisson-wrong 부하 측정은 아직 하지 않았다. 자세한 내용은 [남은 작업](#남은-작업)과 [docs/decisions.md](docs/decisions.md).
 
 ## 1. 요구사항
 
@@ -91,6 +91,7 @@ docker compose -f docker/docker-compose.yml up -d mysql redis kafka
 ```
 
 - Docker 가 있으면 `ContainerStrategyConsistencyTest`(MySQL + Redis + Kafka, 전 전략)가 함께 실행된다. 없으면 자동으로 건너뛴다(SKIPPED).
+- Docker Desktop 29 에서는 Testcontainers 1.21.3 이 API 버전을 거부하므로 `~/.docker-java.properties` 에 `api.version=1.44` 가 필요하다 (D-09).
 - Windows 에서 경로에 한글이 있으면 `GRADLE_USER_HOME`/`LAB_BUILD_DIR` 를 ASCII 경로로 지정해야 한다 ([트러블슈팅](#9-트러블슈팅-기록)).
 
 벤치마크:
@@ -113,22 +114,31 @@ scripts/aggregate-results.sh > docs/results/summary.md               # 중앙값
 
 ## 7. 결과
 
-**측정 예정.** 이 저장소를 작성한 환경에 Docker 와 k6 가 없어 벤치마크를 실행하지 못했다. 수치를 지어내지 않기 위해 비워 둔다.
+### 시나리오 A: 단일 핫 상품 (재고 100, 도착률 최대 1000 req/s, 45초, 3회 중앙값)
 
-| 시나리오 | 전략 | TPS | p50 | p95 | p99 | 에러율 | 정합성 |
+원본 JSON: `docs/results/raw/`, 집계: `docs/results/summary.md`, 실행 로그: `docs/results/benchmark-run.log`.
+
+| 전략 | 시나리오 | 회차 | TPS(req/s) | p50(ms) | p95(ms) | p99(ms) | 에러율(%) |
 |---|---|---|---|---|---|---|---|
-| A. 단일 핫 상품 | pessimistic | 측정 예정 | 측정 예정 | 측정 예정 | 측정 예정 | 측정 예정 | 측정 예정 |
-| A. 단일 핫 상품 | optimistic | 측정 예정 | 측정 예정 | 측정 예정 | 측정 예정 | 측정 예정 | 측정 예정 |
-| A. 단일 핫 상품 | redisson | 측정 예정 | 측정 예정 | 측정 예정 | 측정 예정 | 측정 예정 | 측정 예정 |
-| A. 단일 핫 상품 | redis-atomic | 측정 예정 | 측정 예정 | 측정 예정 | 측정 예정 | 측정 예정 | 측정 예정 |
-| A. 단일 핫 상품 | kafka | 측정 예정 | 측정 예정 | 측정 예정 | 측정 예정 | 측정 예정 | 측정 예정 |
-| B~D | 전 전략 | 측정 예정 | | | | | |
+| kafka | hot | 3 | 645.44 | 754.06 | 4038.94 | 5687.32 | 29.87 |
+| optimistic | hot | 3 | 831.87 | 1.06 | 2.05 | 3.67 | 0.00 |
+| pessimistic | hot | 3 | 831.54 | 1.13 | 2.14 | 9.44 | 0.00 |
+| redis-atomic | hot | 3 | 831.88 | 0.53 | 1.16 | 2.62 | 0.00 |
+| redisson | hot | 3 | 638.15 | 2.73 | 7399.01 | 9242.91 | 52.84 |
 
-그래프(Grafana 캡처)도 실측 후 `docs/` 에 추가할 예정이다.
+![Grafana 대시보드](docs/images/grafana-dashboard.png)
+
+**읽을 때 주의 (측정 한계)**
+- 측정 환경: Windows 노트북의 Docker Desktop. **k6, 앱, MySQL, Redis, Kafka가 한 호스트에서 자원을 나눠 쓴다.** 앱 컨테이너는 2 CPU/1GB(JVM -Xmx512m) 제한이다. 절대값보다 전략 간 상대 비교로만 해석할 것.
+- 도착률 램프 평균이 약 830 req/s 이므로, TPS 가 약 831 로 같은 전략(pessimistic, optimistic, redis-atomic)은 **제공된 부하를 모두 처리했다**는 뜻이지 한계 처리량이 같다는 뜻이 아니다. 한계 처리량을 보려면 더 높은 RATE 가 필요하다.
+- 에러율은 k6 `http_req_failed` 기준(5xx + 네트워크/타임아웃)이다. redisson 과 kafka 의 에러는 대부분 **서버 5xx 가 아니라 k6 클라이언트 30초 타임아웃**이다 (예: 한 회차에서 kafka 5xx 는 0건, 최대 응답시간 30초, VU 상한 2000 도달로 일부 iteration 이 dropped).
+- 해석: pessimistic/optimistic/redis-atomic 은 이 부하에서 에러 0%. redis-atomic 의 p95 가 가장 낮다(품절 요청이 DB 를 건드리지 않음). **redisson 은** 단일 핫 상품에서 락 대기열이 쌓여 대기 한도(`wait-time-ms` 3s)·타임아웃으로 에러율이 높고 p95 가 수 초 단위다. **kafka 는** 모든 요청이 PENDING INSERT 를 DB 에 하고 Consumer 도 같은 DB 를 쓰므로 이 구성에서 포화되어 consumer lag 이 약 4.7만까지 쌓였고 end-to-end 시간이 30초 이상으로 늘었다 (대시보드 참고).
+- 정합성은 부하 테스트가 아니라 Testcontainers 정합성 테스트(28개 통과)로 검증했다. 부하 실행 후 DB 최종 상태 검증은 하지 않았다.
+- 시나리오 B~D(상품 100개 분산, 재고:요청 1:10/1:100, 부하 단계)와 no-lock/redisson-wrong 부하 측정은 **측정 예정**이다.
 
 ## 8. 결론: 상황별 전략 선택 (설계 기준 가이드)
 
-> 아래는 구조적 특성에 근거한 가이드이며 **실측 검증 전**이다. 실측 후 갱신한다.
+> 구조적 특성에 시나리오 A 실측(7장)을 반영한 가이드다. 다른 시나리오는 아직 측정 전이다.
 
 - **경합이 낮고 단순함이 중요** → `optimistic` (재시도 비용이 낮을 때). 핫 상품에는 부적합할 수 있다.
 - **DB 하나로 충분하고 정합성이 최우선** → `pessimistic`. 단, Hikari 풀 크기와 락 타임아웃을 함께 튜닝해야 한다.
@@ -145,12 +155,12 @@ scripts/aggregate-results.sh > docs/results/summary.md               # 중앙값
 
 ## 남은 작업
 
-구현한 것: 1~6단계 전체 (도메인, 6개 전략 + redisson-wrong, Facade, API/관리 API, Kafka Consumer, 메트릭, compose, Prometheus/Grafana, k6, 벤치마크 스크립트, 문서).
+구현한 것: 1~6단계 전체 (도메인, 전략 7종, Facade, API/관리 API, Kafka Consumer, 메트릭, compose, Prometheus/Grafana, k6, 벤치마크 스크립트, 문서).
 
-**실행·검증하지 못한 것**
-- Testcontainers 통합 테스트(`ContainerStrategyConsistencyTest`): Redis 전략(redisson, redisson-wrong, redis-atomic)과 MySQL 위 동작은 **한 번도 실행되지 않았다**. 컴파일만 확인했다.
-- `docker compose up` / Grafana 대시보드 / Prometheus 스크레이프 / Dockerfile: 미실행.
-- k6 스크립트, `run-benchmark.sh`, `aggregate-results.sh`: 문법 검사(`bash -n`)만 했다. k6 는 실행해 보지 못했다.
-- 벤치마크 수치와 Grafana 스크린샷: 없음.
+**검증한 것**: `./gradlew build` (H2/임베디드 Kafka 테스트 + Docker 기반 Testcontainers 28개 전부 통과, 건너뜀 0), `docker compose up` 전체 스택, 7개 전략 API 호출, Prometheus 타깃 up, Grafana 대시보드, k6 시나리오 A 실측.
 
-Docker/k6 가 있는 환경에서 `./gradlew build` → `docker compose up` → `scripts/run-benchmark.sh` 순서로 실행하면 된다.
+**남은 것**
+- 시나리오 B, C, D 실측 (`scripts/run-benchmark.sh <전략> spread|ratio10|ratio100|stages 3`).
+- 부하 실행 후 DB/Redis 최종 정합성 자동 검증 (현재는 통합 테스트로만 검증).
+- 호스트 자원 경쟁을 줄이기 위한 k6 분리 실행, 더 높은 RATE 로 한계 처리량 측정.
+- redisson 의 `wait-time-ms`, Hikari 풀 크기, kafka consumer 동시성 튜닝에 따른 변화 측정.

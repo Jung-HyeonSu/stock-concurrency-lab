@@ -13,11 +13,11 @@ services:
       --max-connections=500
       --innodb-lock-wait-timeout=10
     ports:
-      - "3306:3306"
+      - "13306:3306"   # 호스트의 로컬 MySQL(3306)과 충돌하지 않도록 13306 사용
     cpus: 2
     mem_limit: 2g
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
       interval: 5s
       timeout: 3s
       retries: 20
