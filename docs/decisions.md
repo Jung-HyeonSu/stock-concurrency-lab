@@ -34,3 +34,11 @@ CLAUDE.md 설계에서 애매하거나 바꿔야 했던 부분과 그 이유를 
 - PENDING 저장을 커밋한 뒤 `send().get(5s)` 로 ack 를 기다리고 202 를 반환한다. 비동기로 던지면 API 지연은 줄지만 publish 실패 시 PENDING 주문이 영원히 남는다. 접수 신뢰성을 택했고, 이 지연은 API latency 에 포함된다.
 - 메시지는 JSON 문자열(Jackson)이며 key=productId. Consumer 는 DB 초기화 이전의 잔여 메시지(주문 없음)는 경고 후 건너뛴다.
 - 임베디드 Kafka(KRaft)로 H2 와 함께 Docker 없이 검증했다 (`H2KafkaStrategyTest`).
+
+## D-09. Testcontainers 실행 환경 보정 (Docker Desktop 29, Windows)
+- Docker 29 는 최소 API 1.40 이라 Testcontainers 1.21.3 의 기본 API 버전을 거부한다. `~/.docker-java.properties` 에 `api.version=1.44` 를 두면 인식된다 (프로젝트 코드 변경 없음, 개발 PC 설정).
+- Testcontainers 1.21.3 의 `KafkaContainer` 는 `apache/kafka:3.9.0` 에서 `advertised.listeners ... 0.0.0.0` 로 기동에 실패해 테스트는 `apache/kafka:3.8.0` 을 쓴다. compose 는 리스너를 직접 지정하므로 3.9.0 을 유지한다.
+
+## D-10. redisson 전략: 핫 상품에 100 스레드가 몰리면 waitTime 3s 초과 (실측 관찰)
+- MySQL/Redis 컨테이너에서 재고 100, 1000 요청, 100 스레드 동시 실행 시 기본 `wait-time-ms=3000` 에서 약 10~20% 요청이 `LockAcquisitionException`(503)으로 실패했다 (두 번 실행: 96건, 218건 / 1000건). 정합성 위반이 아니라 락 대기 한도 초과다.
+- 정합성 테스트는 "정합성이 유지되는가"를 보는 것이므로 테스트에서만 `app.redisson.wait-time-ms=60000` 으로 올렸다. 운영/벤치마크 기본값은 3000 으로 두고, 이 값 자체가 redisson 의 에러율을 좌우한다는 점을 벤치마크에서 측정 대상으로 삼는다.

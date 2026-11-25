@@ -31,7 +31,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  */
 @SpringBootTest(properties = {
         "app.simulation.no-lock-think-time-ms=5",
-        "app.simulation.redisson-wrong-post-unlock-delay-ms=5"
+        "app.simulation.redisson-wrong-post-unlock-delay-ms=5",
+        "app.redisson.wait-time-ms=60000"
 })
 @Testcontainers(disabledWithoutDocker = true)
 class ContainerStrategyConsistencyTest extends ConcurrencyTestSupport {
@@ -43,7 +44,7 @@ class ContainerStrategyConsistencyTest extends ConcurrencyTestSupport {
     static final GenericContainer<?> REDIS = new GenericContainer<>("redis:7").withExposedPorts(6379);
 
     @Container
-    static final KafkaContainer KAFKA = new KafkaContainer("apache/kafka:3.9.0");
+    static final KafkaContainer KAFKA = new KafkaContainer("apache/kafka:3.8.0");
 
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry registry) {
@@ -64,7 +65,7 @@ class ContainerStrategyConsistencyTest extends ConcurrencyTestSupport {
 
         Outcome outcome = runConcurrently(strategy, distinctUsers(USERS));
 
-        assertThat(outcome.error()).as("에러 응답 없음").isZero();
+        assertThat(outcome.error()).as("에러 응답 없음: %s", outcome.firstError()).isZero();
         assertThat(currentStock()).isZero();
         assertThat(countOrders(OrderStatus.SUCCESS)).isEqualTo(STOCK);
         assertThat(outcome.success()).isEqualTo(STOCK);

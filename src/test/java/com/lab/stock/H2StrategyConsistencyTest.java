@@ -27,7 +27,7 @@ class H2StrategyConsistencyTest extends ConcurrencyTestSupport {
 
         Outcome outcome = runConcurrently(strategy, distinctUsers(USERS));
 
-        assertThat(outcome.error()).as("에러 응답 없음").isZero();
+        assertThat(outcome.error()).as("에러 응답 없음: %s", outcome.firstError()).isZero();
         assertThat(currentStock()).isZero();
         assertThat(countOrders(OrderStatus.SUCCESS)).isEqualTo(STOCK);
         assertThat(outcome.success()).isEqualTo(STOCK);

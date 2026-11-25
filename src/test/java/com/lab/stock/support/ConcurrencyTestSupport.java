@@ -31,7 +31,7 @@ public abstract class ConcurrencyTestSupport {
     @Autowired protected ProductRepository productRepository;
 
     /** 클라이언트가 응답으로 관측한 결과 집계. */
-    public record Outcome(int success, int soldOut, int pending, int duplicate, int error) {}
+    public record Outcome(int success, int soldOut, int pending, int duplicate, int error, String firstError) {}
 
     protected void resetStock(int stock) {
         adminService.reset(stock, 1);
@@ -49,6 +49,7 @@ public abstract class ConcurrencyTestSupport {
         AtomicInteger pending = new AtomicInteger();
         AtomicInteger duplicate = new AtomicInteger();
         AtomicInteger error = new AtomicInteger();
+        java.util.concurrent.atomic.AtomicReference<String> firstError = new java.util.concurrent.atomic.AtomicReference<>();
 
         ExecutorService pool = Executors.newFixedThreadPool(THREADS);
         CountDownLatch start = new CountDownLatch(1);
@@ -67,6 +68,7 @@ public abstract class ConcurrencyTestSupport {
                     duplicate.incrementAndGet();
                 } catch (Exception e) {
                     error.incrementAndGet();
+                    firstError.compareAndSet(null, e.toString());
                 } finally {
                     done.countDown();
                 }
@@ -75,7 +77,7 @@ public abstract class ConcurrencyTestSupport {
         start.countDown();
         assertThat(done.await(120, TimeUnit.SECONDS)).as("모든 요청이 제한 시간 안에 끝나야 한다").isTrue();
         pool.shutdownNow();
-        return new Outcome(success.get(), soldOut.get(), pending.get(), duplicate.get(), error.get());
+        return new Outcome(success.get(), soldOut.get(), pending.get(), duplicate.get(), error.get(), firstError.get());
     }
 
     protected int currentStock() {
