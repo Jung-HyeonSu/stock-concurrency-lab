@@ -20,5 +20,5 @@ public record StockProperties(
     public record Kafka(boolean enabled, String topic, int partitions, int concurrency, String groupId) {}
 
     /** 경합 구간을 넓혀 정합성 붕괴를 재현하기 위한 인위적 지연. 운영/벤치마크에서는 0. */
-    public record Simulation(long noLockThinkTimeMs, long redissonWrongPostUnlockDelayMs) {}
+    public record Simulation(long noLockThinkTimeMs, long redissonWrongPostUnlockDelayMs, long redissonTxDelayMs) {}
 }

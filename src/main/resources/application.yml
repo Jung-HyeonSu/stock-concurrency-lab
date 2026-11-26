@@ -63,3 +63,4 @@ app:
   simulation:
     no-lock-think-time-ms: 0
     redisson-wrong-post-unlock-delay-ms: 0
+    redisson-tx-delay-ms: 0
