@@ -58,3 +58,10 @@ CLAUDE.md 설계에서 애매하거나 바꿔야 했던 부분과 그 이유를 
 - B~C 결과는 환경 오염으로 신뢰할 수 없다고 판단해 비교에 쓰지 않는다. 보완 후 재측정은 다음 작업으로 남겼다.
 - 벤치마크 실행 중 스크립트를 수정하면 bash 가 깨진다(stages 미실행의 원인). 실행 중에는 수정하지 않는다.
 - k6 경고 로그가 227MB 에 달해 `--log-output=none` 으로 끄고 `docs/results/*.log` 를 gitignore 처리했다.
+
+## D-14. 재측정 방법과 교훈
+- 전략이 바뀔 때마다 앱 컨테이너를 재기동하고(`scripts/run-matrix.sh`), 회차 전 Kafka consumer lag 0 을 기다린다. 이전 실행의 결과는 환경 오염으로 폐기했다.
+- `wait_kafka_drained` 가 consumer group 이 없을 때 `docker exec` 실패로 `set -e` 에 걸려 스크립트가 조용히 죽는 버그가 있어 `|| true` 로 고쳤다.
+- RATE 가 다른 측정은 파일명이 같아 덮어써지므로(`*-hot-runN.json`) 측정 후 `*-hot-r2000-runN.json` 으로 이름을 바꿨다. 다음에는 파일명에 rate 를 넣는 편이 안전하다.
+- 튜닝 효과(Hikari 풀 등)는 회차 간 노이즈가 커서 결론을 내지 않았다. 같은 호스트에서 부하 생성기와 SUT 가 경쟁하는 한계다.
+- 이 PC 에서 Docker Desktop 이 꺼져 있으면 Testcontainers 테스트는 건너뛴다(`disabledWithoutDocker`).

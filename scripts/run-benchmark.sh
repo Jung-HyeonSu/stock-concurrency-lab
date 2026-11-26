@@ -24,7 +24,7 @@ mkdir -p "$RESULT_DIR"
 wait_kafka_drained() {
   command -v docker >/dev/null 2>&1 || return 0
   for _ in $(seq 1 90); do
-    lag=$(docker exec lab-kafka /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server localhost:9092       --describe --group stock-consumer 2>/dev/null | awk 'NR>1 && $6 ~ /^[0-9]+$/ {s+=$6} END {print s+0}')
+    lag=$(docker exec lab-kafka /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server localhost:9092       --describe --group stock-consumer 2>/dev/null | awk 'NR>1 && $6 ~ /^[0-9]+$/ {s+=$6} END {print s+0}' || true)
     [ "${lag:-0}" = "0" ] && return 0
     sleep 5
   done

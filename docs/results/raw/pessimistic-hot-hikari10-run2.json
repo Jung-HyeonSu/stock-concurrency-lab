@@ -1,0 +1,262 @@
+{
+  "strategy": "pessimistic",
+  "scenario": "hot",
+  "variant": "hikari10",
+  "rate": 2000,
+  "stock": 100,
+  "products": 1,
+  "summary": {
+    "root_group": {
+      "checks": [
+        {
+          "name": "not 5xx",
+          "path": "::not 5xx",
+          "id": "190338f12de9620ea4fd03a4d3055937",
+          "passes": 44580,
+          "fails": 0
+        }
+      ],
+      "name": "",
+      "path": "",
+      "id": "d41d8cd98f00b204e9800998ecf8427e",
+      "groups": []
+    },
+    "options": {
+      "noColor": false,
+      "summaryTrendStats": [
+        "avg",
+        "min",
+        "med",
+        "p(90)",
+        "p(95)",
+        "p(99)",
+        "max"
+      ],
+      "summaryTimeUnit": ""
+    },
+    "state": {
+      "isStdOutTTY": false,
+      "isStdErrTTY": false,
+      "testRunDurationMs": 47380.3491
+    },
+    "metrics": {
+      "data_sent": {
+        "contains": "data",
+        "values": {
+          "count": 8085200,
+          "rate": 170644.5848031964
+        },
+        "type": "counter"
+      },
+      "vus": {
+        "type": "gauge",
+        "contains": "default",
+        "values": {
+          "value": 517,
+          "min": 1,
+          "max": 2000
+        }
+      },
+      "http_req_blocked": {
+        "type": "trend",
+        "contains": "time",
+        "values": {
+          "avg": 1.0472499517731721,
+          "min": 0,
+          "med": 0,
+          "p(90)": 2.8737,
+          "p(95)": 4.2424,
+          "p(99)": 9.0516,
+          "max": 213.4604
+        }
+      },
+      "orders_success": {
+        "values": {
+          "count": 24414,
+          "rate": 515.2769125544497
+        },
+        "type": "counter",
+        "contains": "default"
+      },
+      "http_req_tls_handshaking": {
+        "type": "trend",
+        "contains": "time",
+        "values": {
+          "p(95)": 0,
+          "p(99)": 0,
+          "max": 0,
+          "avg": 0,
+          "min": 0,
+          "med": 0,
+          "p(90)": 0
+        }
+      },
+      "iterations": {
+        "type": "counter",
+        "contains": "default",
+        "values": {
+          "count": 44580,
+          "rate": 940.8964021330945
+        }
+      },
+      "dropped_iterations": {
+        "type": "counter",
+        "contains": "default",
+        "values": {
+          "count": 30488,
+          "rate": 643.4735197001746
+        }
+      },
+      "http_reqs": {
+        "type": "counter",
+        "contains": "default",
+        "values": {
+          "count": 44581,
+          "rate": 940.9175079294636
+        }
+      },
+      "http_req_sending": {
+        "contains": "time",
+        "values": {
+          "p(90)": 0,
+          "p(95)": 0.5066,
+          "p(99)": 1.51,
+          "max": 316.6369,
+          "avg": 0.08442813306116968,
+          "min": 0,
+          "med": 0
+        },
+        "type": "trend"
+      },
+      "http_req_failed": {
+        "type": "rate",
+        "contains": "default",
+        "values": {
+          "rate": 0.4523451694668132,
+          "passes": 20166,
+          "fails": 24415
+        }
+      },
+      "iteration_duration": {
+        "type": "trend",
+        "contains": "time",
+        "values": {
+          "med": 19.8995,
+          "p(90)": 4190.16141,
+          "p(95)": 6015.832089999996,
+          "p(99)": 8089.3564389999965,
+          "max": 30049.5213,
+          "avg": 1486.045338835808,
+          "min": 0
+        }
+      },
+      "http_req_duration": {
+        "type": "trend",
+        "contains": "time",
+        "values": {
+          "avg": 1484.5712705457584,
+          "min": 0,
+          "med": 16.3449,
+          "p(90)": 4189.5058,
+          "p(95)": 6015.285,
+          "p(99)": 8089.21801999999,
+          "max": 30044.1384
+        }
+      },
+      "data_received": {
+        "type": "counter",
+        "contains": "data",
+        "values": {
+          "count": 4540847,
+          "rate": 95838.1921250977
+        }
+      },
+      "http_req_duration{expected_response:true}": {
+        "type": "trend",
+        "contains": "time",
+        "values": {
+          "p(99)": 7914.842222,
+          "max": 14175.8652,
+          "avg": 2284.5820029162537,
+          "min": 0.5036,
+          "med": 2031.3249,
+          "p(90)": 5461.186640000002,
+          "p(95)": 6727.38446
+        }
+      },
+      "http_req_receiving": {
+        "type": "trend",
+        "contains": "time",
+        "values": {
+          "p(99)": 3.1698599999999555,
+          "max": 530.8021,
+          "avg": 0.21908585496063457,
+          "min": 0,
+          "med": 0,
+          "p(90)": 0.5052,
+          "p(95)": 0.9965
+        }
+      },
+      "http_req_connecting": {
+        "type": "trend",
+        "contains": "time",
+        "values": {
+          "max": 212.769,
+          "avg": 0.9789691819384938,
+          "min": 0,
+          "med": 0,
+          "p(90)": 2.5679,
+          "p(95)": 4.0324,
+          "p(99)": 8.552339999999983
+        }
+      },
+      "http_req_waiting": {
+        "type": "trend",
+        "contains": "time",
+        "values": {
+          "p(90)": 4189.4664,
+          "p(95)": 6015.1743,
+          "p(99)": 8088.420899999987,
+          "max": 30044.1384,
+          "avg": 1484.2677565577346,
+          "min": 0,
+          "med": 16.2321
+        }
+      },
+      "checks": {
+        "type": "rate",
+        "contains": "default",
+        "values": {
+          "rate": 1,
+          "passes": 44580,
+          "fails": 0
+        }
+      },
+      "vus_max": {
+        "type": "gauge",
+        "contains": "default",
+        "values": {
+          "max": 2000,
+          "value": 2000,
+          "min": 200
+        }
+      }
+    },
+    "setup_data": {
+      "products": 1,
+      "stock": 100
+    }
+  },
+  "verify": {
+    "products": 1,
+    "initialStock": 100,
+    "successOrders": 100,
+    "soldOutOrders": 0,
+    "pendingOrders": 0,
+    "negativeStockProducts": 0,
+    "mismatchedProducts": 0,
+    "redisChecked": true,
+    "redisMismatchedProducts": 1,
+    "consistent": true
+  }
+}
