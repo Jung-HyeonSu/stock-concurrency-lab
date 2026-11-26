@@ -65,3 +65,7 @@ CLAUDE.md 설계에서 애매하거나 바꿔야 했던 부분과 그 이유를 
 - RATE 가 다른 측정은 파일명이 같아 덮어써지므로(`*-hot-runN.json`) 측정 후 `*-hot-r2000-runN.json` 으로 이름을 바꿨다. 다음에는 파일명에 rate 를 넣는 편이 안전하다.
 - 튜닝 효과(Hikari 풀 등)는 회차 간 노이즈가 커서 결론을 내지 않았다. 같은 호스트에서 부하 생성기와 SUT 가 경쟁하는 한계다.
 - 이 PC 에서 Docker Desktop 이 꺼져 있으면 Testcontainers 테스트는 건너뛴다(`disabledWithoutDocker`).
+
+## D-15. redisson 락 만료 재현과 hot 재측정
+- `app.simulation.redisson-tx-delay-ms`(기본 0)를 추가해 트랜잭션이 leaseTime 보다 길어지는 상황을 재현한다. `ContainerRedissonLeaseExpiryTest` 가 leaseTime 100ms / TX 지연 400ms 에서 락 만료 Counter 증가와 정합성 붕괴를 검증한다. 올바른 순서(락→TX→커밋→해제)여도 leaseTime 이 TX 보다 짧으면 안전하지 않다는 증거다.
+- hot @1000 을 `run-matrix.sh` 로 재측정해 정합성 검증을 붙였고, no-lock / redisson-wrong 의 실제 초과 판매 규모를 기록했다.
